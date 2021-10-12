@@ -223,32 +223,8 @@ void StereoSGBMProcessor::processPoints2(const stereo_msgs::DisparityImage& disp
   // Fill in sparse point cloud message
   points.height = 1;
   points.width  = valid_points;
-
-  // old way to set fields
-  // points.fields.resize(4);
-  // points.fields[0].name     = "x";
-  // points.fields[0].offset   = 0;
-  // points.fields[0].count    = 1;
-  // points.fields[0].datatype = sensor_msgs::PointField::FLOAT32;
-  // points.fields[1].name     = "y";
-  // points.fields[1].offset   = 4;
-  // points.fields[1].count    = 1;
-  // points.fields[1].datatype = sensor_msgs::PointField::FLOAT32;
-  // points.fields[2].name     = "z";
-  // points.fields[2].offset   = 8;
-  // points.fields[2].count    = 1;
-  // points.fields[2].datatype = sensor_msgs::PointField::FLOAT32;
-  // points.fields[3].name     = "rgb";
-  // points.fields[3].offset   = 12;
-  // points.fields[3].count    = 1;
-  // points.fields[3].datatype = sensor_msgs::PointField::FLOAT32;
-  // points.is_bigendian = false; ???
-  // points.point_step = 16;
-  // points.row_step   = points.point_step * points.width;
-  // points.data.resize(points.row_step * points.height);
-
   points.is_dense = false;  // there may be invalid points
-  
+  ROS_INFO("number of valid points: %d", valid_points);
   sensor_msgs::PointCloud2Modifier pcd_modifier(points);
   pcd_modifier.setPointCloud2Fields(
   4,
@@ -263,27 +239,6 @@ void StereoSGBMProcessor::processPoints2(const stereo_msgs::DisparityImage& disp
   sensor_msgs::PointCloud2Iterator<uint8_t> iter_r(points, "r");
   sensor_msgs::PointCloud2Iterator<uint8_t> iter_g(points, "g");
   sensor_msgs::PointCloud2Iterator<uint8_t> iter_b(points, "b");
-  // float bad_point = std::numeric_limits<float>::quiet_NaN();
-  // int   i         = 0;
-  // for(int32_t u = 0; u < dense_points_.rows; ++u)
-  // {
-  //   for(int32_t v = 0; v < dense_points_.cols; ++v, ++i)
-  //   {
-  //     if(isValidPoint(dense_points_(u, v)))
-  //     {
-  //       // x,y,z,rgba
-  //       memcpy(&points.data[i * points.point_step + 0], &dense_points_(u, v)[0], sizeof(float));
-  //       memcpy(&points.data[i * points.point_step + 4], &dense_points_(u, v)[1], sizeof(float));
-  //       memcpy(&points.data[i * points.point_step + 8], &dense_points_(u, v)[2], sizeof(float));
-  //     }
-  //     else
-  //     {
-  //       memcpy(&points.data[i * points.point_step + 0], &bad_point, sizeof(float));
-  //       memcpy(&points.data[i * points.point_step + 4], &bad_point, sizeof(float));
-  //       memcpy(&points.data[i * points.point_step + 8], &bad_point, sizeof(float));
-  //     }
-  //   }
-  // }
 
   for (int i = 0; i < valid_points; ++i, ++iter_x, ++iter_y, ++iter_z)
   {
@@ -297,132 +252,47 @@ void StereoSGBMProcessor::processPoints2(const stereo_msgs::DisparityImage& disp
   // i             = 0;
   if(encoding == enc::MONO8)
   {
-    for(int32_t u = 0; u < dense_points_.rows; ++u)
+    for (int i = 0; i < valid_points; ++i, ++iter_r, ++iter_g, ++iter_b)
     {
-      for(int32_t v = 0; v < dense_points_.cols; ++v)
-      {
-        if(isValidPoint(dense_points_(u, v)))
-        {
-          uint8_t g   = color.at<uint8_t>(u, v);
-          int32_t rgb = (g << 16) | (g << 8) | g;
-          *iter_r = *iter_g = *iter_b = g;
-          ++iter_r;
-          ++iter_g;
-          ++iter_b; 
-          // memcpy(&points.data[i * points.point_step + 12], &rgb, sizeof(int32_t));
-        }
-      }
+      uint8_t g   = color.at<uint8_t>(valid_rows[i], valid_cols[i]);
+      int32_t rgb = (g << 16) | (g << 8) | g;
+      *iter_r = *iter_g = *iter_b = g;
+      ++iter_r;
+      ++iter_g;
+      ++iter_b; 
     }
   }
   else if(encoding == enc::RGB8)
   {
-    for(int32_t u = 0; u < dense_points_.rows; ++u)
+    for (int i = 0; i < valid_points; ++i, ++iter_r, ++iter_g, ++iter_b)
     {
-      for(int32_t v = 0; v < dense_points_.cols; ++v)
-      {
-        if(isValidPoint(dense_points_(u, v)))
-        {
-          const cv::Vec3b& rgb        = color.at<cv::Vec3b>(u, v);
-          // int32_t          rgb_packed = (rgb[0] << 16) | (rgb[1] << 8) | rgb[2];
-          *iter_r = rgb[0];
-          *iter_g = rgb[1];
-          *iter_b = rgb[2];
-          ++iter_r;
-          ++iter_g;
-          ++iter_b; 
-          // memcpy(&points.data[i * points.point_step + 12], &rgb_packed, sizeof(int32_t));
-        }
-      }
+      const cv::Vec3b& rgb = color.at<cv::Vec3b>(valid_rows[i], valid_cols[i]);
+      *iter_r = rgb[0];
+      *iter_g = rgb[1];
+      *iter_b = rgb[2];
+      ++iter_r;
+      ++iter_g;
+      ++iter_b; 
     }
   }
   else if(encoding == enc::BGR8)
   {
-    for(int32_t u = 0; u < dense_points_.rows; ++u)
+  for (int i = 0; i < valid_points; ++i, ++iter_r, ++iter_g, ++iter_b)
     {
-      for(int32_t v = 0; v < dense_points_.cols; ++v)
-      {
-        if(isValidPoint(dense_points_(u, v)))
-        {
-          const cv::Vec3b& bgr        = color.at<cv::Vec3b>(u, v);
-          *iter_r = bgr[2];
-          *iter_g = bgr[1];
-          *iter_b = bgr[0];
-          ++iter_r;
-          ++iter_g;
-          ++iter_b;
-          // int32_t          rgb_packed = (bgr[2] << 16) | (bgr[1] << 8) | bgr[0];
-          // memcpy(&points.data[i * points.point_step + 12], &rgb_packed, sizeof(int32_t));
-        }
-      }
+      const cv::Vec3b& bgr = color.at<cv::Vec3b>(valid_rows[i], valid_cols[i]);
+      *iter_r = bgr[2];
+      *iter_g = bgr[1];
+      *iter_b = bgr[0];
+      ++iter_r;
+      ++iter_g;
+      ++iter_b;
     }
   }
-
-  // if (encoding == enc::MONO8)
-  // {
-  //   const cv::Mat_<uint8_t> color(dense_points_->height, l_image_msg->width,
-  //                                 (uint8_t*)&l_image_msg->data[0],
-  //                                 l_image_msg->step);
-  //   for (int v = 0; v < dense_points_.rows; ++v)
-  //   {
-  //     for (int u = 0; u < dense_points_.cols; ++u)
-  //     {
-  //       if (isValidPoint(dense_points_(v,u)))
-  //       {
-  //         uint8_t g = color(v,u);
-  //         *iter_r = *iter_g = *iter_b = g;
-  //         ++iter_r;
-  //         ++iter_g;
-  //         ++iter_b;        }
-  //     }
-  //   }
-  // }
-  // else if (encoding == enc::RGB8)
-  // {
-  //   const cv::Mat_<cv::Vec3b> color(l_image_msg->height, l_image_msg->width,
-  //                                   (cv::Vec3b*)&l_image_msg->data[0],
-  //                                   l_image_msg->step);
-  //   for (int v = 0; v < dense_points_.rows; ++v)
-  //   {
-  //     for (int u = 0; u < dense_points_.cols; ++u)
-  //     {
-  //       if (isValidPoint(dense_points_(v,u)))
-  //       {
-  //         const cv::Vec3b& rgb = color(v,u);
-  //         *iter_r = rgb[0];
-  //         *iter_g = rgb[1];
-  //         *iter_b = rgb[2];
-  //         ++iter_r;
-  //         ++iter_g;
-  //         ++iter_b;
-  //       }
-  //     }
-  //   }
-  // }
-  // else if (encoding == enc::BGR8)
-  // {
-  //   const cv::Mat_<cv::Vec3b> color(l_image_msg->height, l_image_msg->width,
-  //                                   (cv::Vec3b*)&l_image_msg->data[0],
-  //                                   l_image_msg->step);
-  //   for (int v = 0; v < dense_points_.rows; ++v)
-  //   {
-  //     for (int u = 0; u < dense_points_.cols; ++u)
-  //     {
-  //       if (isValidPoint(dense_points_(v,u)))
-  //       {
-  //         const cv::Vec3b& bgr = color(v,u);
-  //         *iter_r = bgr[2];
-  //         *iter_g = bgr[1];
-  //         *iter_b = bgr[0];
-  //         ++iter_r;
-  //         ++iter_g;
-  //         ++iter_b;
-  //       }
-  //     }
-  //   }
-  // }
   else
   {
     ROS_WARN("Could not fill color channel of the point cloud, unrecognized encoding '%s'", encoding.c_str());
   }
+  delete[] valid_rows;
+  delete[] valid_cols;
 }
 }  // namespace gpu_stereo_image_proc
