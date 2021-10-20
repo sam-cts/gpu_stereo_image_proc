@@ -103,6 +103,20 @@ install(TARGETS vx_stereoimageproc_exe
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+add_executable(image_proc_rect_exe src/nodes/image_proc_rectify_only.cpp)
+target_link_libraries(image_proc_rect_exe ${VX_NODELET_NAME})
+SET_TARGET_PROPERTIES(image_proc_rect_exe PROPERTIES OUTPUT_NAME image_proc_rect_only)
+install(TARGETS image_proc_rect_exe
+        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+add_executable(vx_stereoimageproc_no_rect_exe src/nodes/vx_stereo_image_proc_no_rect.cpp)
+target_link_libraries(vx_stereoimageproc_no_rect_exe ${VX_NODELET_NAME})
+SET_TARGET_PROPERTIES(vx_stereoimageproc_no_rect_exe PROPERTIES OUTPUT_NAME vx_${PROJECT_NAME}_no_rect)
+install(TARGETS vx_stereoimageproc_no_rect_exe
+        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 # install the launch file
 install(DIRECTORY launch
         DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/
